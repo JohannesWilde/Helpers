@@ -1,7 +1,7 @@
 #ifndef BYTE_SWAP_HPP
 #define BYTE_SWAP_HPP
 
-#include <cstdint>
+#include <stdint.h>
 
 namespace Helpers
 {

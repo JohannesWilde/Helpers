@@ -3,8 +3,8 @@
 
 #include "bitSwap.hpp"
 
-#include <climits>
-#include <cstdint>
+#include <limits.h>
+#include <stdint.h>
 
 static_assert(8 == CHAR_BIT);
 
