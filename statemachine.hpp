@@ -1,16 +1,20 @@
 namespace Helpers
 {
 
+/**
+ * @brief The AbstractState class implements the methods for initializing, processing
+ * and deinitializing data for the respective State in a Statemachine.
+ */
 template<typename DATA_TYPE>
 class AbstractState
 {
 public:
 
-    virtual void init(DATA_TYPE & data) = 0;
+    virtual void init(DATA_TYPE & data) const = 0;
 
-    virtual AbstractState *process(DATA_TYPE & data) = 0;
+    virtual AbstractState const * process(DATA_TYPE & data) const = 0;
 
-    virtual void deinit(DATA_TYPE & data) = 0;
+    virtual void deinit(DATA_TYPE & data) const = 0;
 
 protected:
 
@@ -22,14 +26,44 @@ protected:
     AbstractState &operator=(AbstractState &&) = delete;
 };
 
+/**
+ * @brief The NoopState class serves as a non-operational instance.
+ * It was introduced, to avoid nullptr-checks with every process()-call.
+ */
+template<typename DATA_TYPE>
+class NoopState : public AbstractState<DATA_TYPE>
+{
+public:
+    NoopState() = default;
 
+    void init(DATA_TYPE & data) const override
+    {
+        // intentionally empty
+    }
+
+    AbstractState<DATA_TYPE> const * process(DATA_TYPE & data) const override
+    {
+        // intentionally empty
+        return this;
+    }
+
+    void deinit(DATA_TYPE & data) const override
+    {
+        // intentionally empty
+    }
+};
+
+/**
+ * @brief The Statemachine class provides a generic statemachine implementation.
+ * For its usage see example below.
+ */
 template <typename DATA_TYPE>
 class Statemachine
 {
 public:
 
     Statemachine(AbstractState<DATA_TYPE> * const startState)
-        : previousState_(nullptr)
+        : previousState_(&noopState_)
         , currentState_(startState)
     {
         // intentionally empty
@@ -39,31 +73,44 @@ public:
     {
         if (previousState_ != currentState_)
         {
+            previousState_->deinit(data);
             currentState_->init(data);
             previousState_ = currentState_;
         }
 
-        AbstractState<DATA_TYPE> * const nextState = currentState_->process(data);
+        // Finish processing with the processing of the current state, so that
+        // the result will be externally visible afterwards.
+        currentState_ = currentState_->process(data);
+    }
 
-        if (nextState != currentState_)
-        {
-            currentState_->deinit(data);
-            currentState_ = nextState;
-        }
+    void reset(DATA_TYPE & data, AbstractState<DATA_TYPE> * const startState)
+    {
+        // if (previousState_ == currentState_) -> this is the same as calling currentState_->deinit(data);
+        // if (previousState_ != currentState_) -> deinit() previousState_ and don't even init() currentState_.
+        previousState_->deinit(data);
+        previousState_ = &noopState_;
+
+        currentState_ = startState;
     }
 
 private:
 
-    AbstractState<DATA_TYPE> * previousState_;
-    AbstractState<DATA_TYPE> * currentState_;
+    AbstractState<DATA_TYPE> const * previousState_;
+    AbstractState<DATA_TYPE> const * currentState_;
 
+    static NoopState<DATA_TYPE> const noopState_;
 };
+
+// ODR ensures, this exists only once per DATA_TYPE.
+template <typename DATA_TYPE>
+NoopState<DATA_TYPE> const Statemachine<DATA_TYPE>::noopState_;
 
 
 /* ----- Example -----
  *
  * #include <iostream>
  *
+ * // one implementation
  *
  * struct TrafficLight
  * {
@@ -94,13 +141,14 @@ private:
  * };
  *
  *
+ *
  * class StateRed : public AbstractState<DataType>
  * {
- *     void init(DataType & data) override;
+ *     void init(DataType & data) const override;
  *
- *     AbstractState * process(DataType & data) override;
+ *     AbstractState const * process(DataType & data) const override;
  *
- *     void deinit(DataType & data) override;
+ *     void deinit(DataType & data) const override;
  * };
  *
  * static StateRed stateRed;
@@ -108,11 +156,11 @@ private:
  *
  * class StateRedYellow : public AbstractState<DataType>
  * {
- *     void init(DataType & data) override;
+ *     void init(DataType & data) const override;
  *
- *     AbstractState * process(DataType & data) override;
+ *     AbstractState const * process(DataType & data) const override;
  *
- *     void deinit(DataType & data) override;
+ *     void deinit(DataType & data) const override;
  * };
  *
  * static StateRedYellow stateRedYellow;
@@ -120,11 +168,11 @@ private:
  *
  * class StateGreen : public AbstractState<DataType>
  * {
- *     void init(DataType & data) override;
+ *     void init(DataType & data) const override;
  *
- *     AbstractState * process(DataType & data) override;
+ *     AbstractState const * process(DataType & data) const override;
  *
- *     void deinit(DataType & data) override;
+ *     void deinit(DataType & data) const override;
  * };
  *
  * static StateGreen stateGreen;
@@ -132,11 +180,11 @@ private:
  *
  * class StateYellow : public AbstractState<DataType>
  * {
- *     void init(DataType & data) override;
+ *     void init(DataType & data) const override;
  *
- *     AbstractState * process(DataType & data) override;
+ *     AbstractState const * process(DataType & data) const override;
  *
- *     void deinit(DataType & data) override;
+ *     void deinit(DataType & data) const override;
  * };
  *
  * static StateYellow stateYellow;
@@ -144,7 +192,7 @@ private:
  *
  *
  *
- * void StateRed::init(DataType & data)
+ * void StateRed::init(DataType & data) const
  * {
  *     std::cout << "StateRed::init" << std::endl;
  *     data.remainingDurationInPhase = 10;
@@ -153,7 +201,7 @@ private:
  *     data.trafficLight.yellow = false;
  * }
  *
- * AbstractState<DataType> * StateRed::process(DataType & data)
+ * AbstractState<DataType> const * StateRed::process(DataType & data) const
  * {
  *     std::cout << "StateRed::process" << std::endl;
  *
@@ -168,13 +216,13 @@ private:
  *     }
  * }
  *
- * void StateRed::deinit(DataType & data)
+ * void StateRed::deinit(DataType & data) const
  * {
  *     std::cout << "StateRed::deinit" << std::endl;
  * }
  *
  *
- * void StateRedYellow::init(DataType & data)
+ * void StateRedYellow::init(DataType & data) const
  * {
  *     std::cout << "StateRedYellow::init" << std::endl;
  *     data.remainingDurationInPhase = 2;
@@ -183,7 +231,7 @@ private:
  *     data.trafficLight.green = false;
  * }
  *
- * AbstractState<DataType> * StateRedYellow::process(DataType & data)
+ * AbstractState<DataType> const * StateRedYellow::process(DataType & data) const
  * {
  *     std::cout << "StateRedYellow::process" << std::endl;
  *
@@ -198,13 +246,13 @@ private:
  *     }
  * }
  *
- * void StateRedYellow::deinit(DataType & data)
+ * void StateRedYellow::deinit(DataType & data) const
  * {
  *     std::cout << "StateRedYellow::deinit" << std::endl;
  * }
  *
  *
- * void StateGreen::init(DataType & data)
+ * void StateGreen::init(DataType & data) const
  * {
  *     std::cout << "StateGreen::init" << std::endl;
  *     data.remainingDurationInPhase = 5;
@@ -213,7 +261,7 @@ private:
  *     data.trafficLight.green = true;
  * }
  *
- * AbstractState<DataType> * StateGreen::process(DataType & data)
+ * AbstractState<DataType> const * StateGreen::process(DataType & data) const
  * {
  *     std::cout << "StateGreen::process" << std::endl;
  *
@@ -228,13 +276,13 @@ private:
  *     }
  * }
  *
- * void StateGreen::deinit(DataType & data)
+ * void StateGreen::deinit(DataType & data) const
  * {
  *     std::cout << "StateGreen::deinit" << std::endl;
  * }
  *
  *
- * void StateYellow::init(DataType & data)
+ * void StateYellow::init(DataType & data) const
  * {
  *     std::cout << "StateYellow::init" << std::endl;
  *     data.remainingDurationInPhase = 3;
@@ -243,7 +291,7 @@ private:
  *     data.trafficLight.green = false;
  * }
  *
- * AbstractState<DataType> * StateYellow::process(DataType & data)
+ * AbstractState<DataType> const * StateYellow::process(DataType & data) const
  * {
  *     std::cout << "StateYellow::process" << std::endl;
  *
@@ -258,7 +306,7 @@ private:
  *     }
  * }
  *
- * void StateYellow::deinit(DataType & data)
+ * void StateYellow::deinit(DataType & data) const
  * {
  *     std::cout << "StateYellow::deinit" << std::endl;
  * }
@@ -274,9 +322,6 @@ private:
  *     for (size_t index = 0; index < 40; ++index)
  *     {
  *         statemachine.process(data);
- *
- *         // Typically the output should happen inside the process command,
- *         // as otherwise the deinit()-call might show strange results at this point.
  *         std::cout << data.trafficLight << "    (" << index << ")" << std::endl;
  *     }
  *
