@@ -59,9 +59,14 @@ template <typename DATA_TYPE>
 class Statemachine
 {
 public:
+    // This is a non-operational state. One can use it instead of a nullptr state,
+    // which still allows Statemachine::process() to be called [even though it does
+    // nothing [apart from potentially a deinit() in the first], until reset() is
+    // called with a non-noop-state].
+    static NoopState<DATA_TYPE> const noopState;
 
     constexpr Statemachine(AbstractState<DATA_TYPE> const & startState)
-        : previousState_(&noopState_)
+        : previousState_(&noopState)
         , currentState_(&startState)
     {
         // intentionally empty
@@ -86,7 +91,7 @@ public:
         // if (previousState_ == currentState_) -> this is the same as calling currentState_->deinit(data);
         // if (previousState_ != currentState_) -> deinit() previousState_ and don't even init() currentState_.
         previousState_->deinit(data);
-        previousState_ = &noopState_;
+        previousState_ = &noopState;
 
         currentState_ = &startState;
     }
@@ -95,13 +100,11 @@ private:
 
     AbstractState<DATA_TYPE> const * previousState_;
     AbstractState<DATA_TYPE> const * currentState_;
-
-    static NoopState<DATA_TYPE> const noopState_;
 };
 
 // ODR ensures, this exists only once per DATA_TYPE.
 template <typename DATA_TYPE>
-NoopState<DATA_TYPE> const Statemachine<DATA_TYPE>::noopState_;
+NoopState<DATA_TYPE> const Statemachine<DATA_TYPE>::noopState;
 
 
 /* ----- Example -----
