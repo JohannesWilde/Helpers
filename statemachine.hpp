@@ -10,11 +10,11 @@ class AbstractState
 {
 public:
 
-    virtual void init(DATA_TYPE & data) = 0;
+    virtual void init(DATA_TYPE & data) const = 0;
 
-    virtual AbstractState & process(DATA_TYPE & data) = 0;
+    virtual AbstractState const & process(DATA_TYPE & data) const = 0;
 
-    virtual void deinit(DATA_TYPE & data) = 0;
+    virtual void deinit(DATA_TYPE & data) const = 0;
 
 protected:
 
@@ -34,18 +34,18 @@ template<typename DATA_TYPE>
 class NoopState : public AbstractState<DATA_TYPE>
 {
 public:
-    void init(DATA_TYPE & data) override
+    void init(DATA_TYPE & data) const override
     {
         // intentionally empty
     }
 
-    AbstractState<DATA_TYPE> & process(DATA_TYPE & data) override
+    AbstractState<DATA_TYPE> const & process(DATA_TYPE & data) const override
     {
         // intentionally empty
         return *this;
     }
 
-    void deinit(DATA_TYPE & data) override
+    void deinit(DATA_TYPE & data) const override
     {
         // intentionally empty
     }
@@ -60,7 +60,7 @@ class Statemachine
 {
 public:
 
-    constexpr Statemachine(AbstractState<DATA_TYPE> & startState)
+    constexpr Statemachine(AbstractState<DATA_TYPE> const & startState)
         : previousState_(&noopState_)
         , currentState_(&startState)
     {
@@ -81,7 +81,7 @@ public:
         currentState_ = &currentState_->process(data);
     }
 
-    void reset(DATA_TYPE & data, AbstractState<DATA_TYPE> & startState)
+    void reset(DATA_TYPE & data, AbstractState<DATA_TYPE> const & startState)
     {
         // if (previousState_ == currentState_) -> this is the same as calling currentState_->deinit(data);
         // if (previousState_ != currentState_) -> deinit() previousState_ and don't even init() currentState_.
@@ -93,15 +93,15 @@ public:
 
 private:
 
-    AbstractState<DATA_TYPE> * previousState_;
-    AbstractState<DATA_TYPE> * currentState_;
+    AbstractState<DATA_TYPE> const * previousState_;
+    AbstractState<DATA_TYPE> const * currentState_;
 
-    static NoopState<DATA_TYPE> noopState_;
+    static NoopState<DATA_TYPE> const noopState_;
 };
 
 // ODR ensures, this exists only once per DATA_TYPE.
 template <typename DATA_TYPE>
-NoopState<DATA_TYPE> Statemachine<DATA_TYPE>::noopState_;
+NoopState<DATA_TYPE> const Statemachine<DATA_TYPE>::noopState_;
 
 
 /* ----- Example -----
@@ -140,54 +140,50 @@ NoopState<DATA_TYPE> Statemachine<DATA_TYPE>::noopState_;
  *
  * class StateRed : public AbstractState<DataType>
  * {
- * public:
- *     void init(DataType & data) override;
+ *     void init(DataType & data) const override;
  *
- *     AbstractState & process(DataType & data) override;
+ *     AbstractState const & process(DataType & data) const override;
  *
- *     void deinit(DataType & data) override;
+ *     void deinit(DataType & data) const override;
  * };
  *
- * static StateRed stateRed;
+ * static StateRed const stateRed;
  *
  *
  * class StateRedYellow : public AbstractState<DataType>
  * {
- * public:
- *     void init(DataType & data) override;
+ *     void init(DataType & data) const override;
  *
- *     AbstractState & process(DataType & data) override;
+ *     AbstractState const & process(DataType & data) const override;
  *
- *     void deinit(DataType & data) override;
+ *     void deinit(DataType & data) const override;
  * };
  *
- * static StateRedYellow stateRedYellow;
+ * static StateRedYellow const stateRedYellow;
  *
  *
  * class StateGreen : public AbstractState<DataType>
  * {
- * public:
- *     void init(DataType & data) override;
+ *     void init(DataType & data) const override;
  *
- *     AbstractState & process(DataType & data) override;
+ *     AbstractState const & process(DataType & data) const override;
  *
- *     void deinit(DataType & data) override;
+ *     void deinit(DataType & data) const override;
  * };
  *
- * static StateGreen stateGreen;
+ * static StateGreen const stateGreen;
  *
  *
  * class StateYellow : public AbstractState<DataType>
  * {
- * public:
- *     void init(DataType & data) override;
+ *     void init(DataType & data) const override;
  *
- *     AbstractState & process(DataType & data) override;
+ *     AbstractState const & process(DataType & data) const override;
  *
- *     void deinit(DataType & data) override;
+ *     void deinit(DataType & data) const override;
  * };
  *
- * static StateYellow stateYellow;
+ * static StateYellow const stateYellow;
  *
  *
  *
@@ -201,7 +197,7 @@ NoopState<DATA_TYPE> Statemachine<DATA_TYPE>::noopState_;
  *     data.trafficLight.yellow = false;
  * }
  *
- * AbstractState<DataType> & StateRed::process(DataType & data) const
+ * AbstractState<DataType> const & StateRed::process(DataType & data) const
  * {
  *     std::cout << "StateRed::process" << std::endl;
  *
@@ -231,7 +227,7 @@ NoopState<DATA_TYPE> Statemachine<DATA_TYPE>::noopState_;
  *     data.trafficLight.green = false;
  * }
  *
- * AbstractState<DataType> & StateRedYellow::process(DataType & data) const
+ * AbstractState<DataType> const & StateRedYellow::process(DataType & data) const
  * {
  *     std::cout << "StateRedYellow::process" << std::endl;
  *
@@ -261,7 +257,7 @@ NoopState<DATA_TYPE> Statemachine<DATA_TYPE>::noopState_;
  *     data.trafficLight.green = true;
  * }
  *
- * AbstractState<DataType> & StateGreen::process(DataType & data) const
+ * AbstractState<DataType> const & StateGreen::process(DataType & data) const
  * {
  *     std::cout << "StateGreen::process" << std::endl;
  *
@@ -291,7 +287,7 @@ NoopState<DATA_TYPE> Statemachine<DATA_TYPE>::noopState_;
  *     data.trafficLight.green = false;
  * }
  *
- * AbstractState<DataType> & StateYellow::process(DataType & data) const
+ * AbstractState<DataType> const & StateYellow::process(DataType & data) const
  * {
  *     std::cout << "StateYellow::process" << std::endl;
  *
